@@ -22,7 +22,7 @@ export class ListController {
   @ApiOperation({ summary: 'Get your todo list'})
   @ApiResponse({ status: 200, description: 'Todo list of your items', type: List})
   @HttpCode(200)
-  getList(): Array<List> {
+  async getList(): Promise<List[]> {
     return this.listService.getList();
   }
 
@@ -31,37 +31,37 @@ export class ListController {
   @ApiResponse({ status: 201, description: 'Item added'})
   @ApiBody({ type: List, description: 'Add new item to your todo list'})
   @HttpCode(201)
-  addList(@Body() newItem: List) {
-    this.listService.addList(newItem);
+  async addList(@Body() newItem: List) {
+    await this.listService.addList(newItem);
     return { message: 'New item successfully added to list!' }
   }
 
-  @Put(':id')
+  @Put(':sortOrder')
   @ApiOperation({ summary: 'Update existing item from your todo list'})
   @ApiBody({ type: UpdateListDto, description: 'Update existing item from your todo list'})
   @ApiParam({
-    name: 'id',
-    description: 'The unique ID of the item in your todo list',
+    name: 'sortOrder',
+    description: 'The unique sortOrder of the item in your todo list',
     type: Number,
     example: '1'
   })
   @ApiResponse({ status: 204, description: 'Item updated'})
   @HttpCode(204)
-  updateList(@Param() params, @Body() updateItem: UpdateListDto): Array<List> {
-    return this.listService.updateList(params.id, updateItem);
+  async updateList(@Param() params, @Body() updateItem: UpdateListDto): Promise<List> {
+    return await this.listService.updateList(params.sortOrder, updateItem);
   }
 
-  @Delete(':id')
+  @Delete(':sortOrder')
   @ApiParam({
-    name: 'id',
-    description: 'The unique ID of the item in your todo list',
+    name: 'sortOrder',
+    description: 'The unique sortOrder of the item in your todo list',
     type: Number,
     example: '1'
   })
   @ApiOperation({ summary: 'Delete existing item from your todo list'})
   @ApiResponse({ status: 204, description: 'Item deleted'})
   @HttpCode(204)
-  deleteList(@Param() params): Array<List> {
-    return this.listService.deleteList(params.id);
+  async deleteList(@Param() params): Promise<List> {
+    return await this.listService.deleteList(params.sortOrder);
   }
 }

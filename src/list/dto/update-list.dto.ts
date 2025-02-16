@@ -6,4 +6,10 @@ export class UpdateListDto {
 
   @ApiProperty({example: 'Go to this specific store to buy bread, preferrably brown', description: 'Details of your activity', required: false})
   readonly details: string;
+
+  @ApiProperty({example: 'To do/In progress/Done', description: 'Status of your activity', required: false})
+  readonly status: string;
+
+  @ApiProperty({example: '2025-02-16 19:04', description: 'Date time when your activity is completed', required: false})
+  dateTimeCompleted: Date;
 }

@@ -15,12 +15,9 @@
             "outFiles": [
                 "${workspaceFolder}/dist/**/*.js"
             ],
-            "env": {
-                "PORT": "3000"
-            },
-            "args": ["start", "--inspect"],
-            "sourceMaps": true,
-            "preLaunchTask": "npm: build"
+            "envFile": "${workspaceFolder}\\.env",
+            "runtimeArgs": ["--nolazy", "-r", "ts-node/register"],
+            "sourceMaps": true
         }
     ]
 }

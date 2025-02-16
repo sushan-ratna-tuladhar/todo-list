@@ -4,27 +4,26 @@ import { readFileSync, writeFileSync } from 'fs';
 import { List } from './list.entity';
 import { UpdateListDto } from './dto';
 import * as path from 'path';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 
 @Injectable()
 export class ListService {
   private list: Array<List>;
   private listDataFileName: string;
 
-  constructor() {
-    this.listDataFileName = path.join(__dirname, '../../data/list.data.json');
-    this.list = new Helpers().sortByKey(
-      JSON.parse(readFileSync(this.listDataFileName, 'utf-8')),
-      'id',
-    );
+  constructor(@InjectModel('List') private listModel:Model<List>) {
+    // this.listDataFileName = path.join(__dirname, '../../data/list.data.json');
+    // this.list = new Helpers().sortByKey(
+    //   JSON.parse(readFileSync(this.listDataFileName, 'utf-8')),
+    //   'sortOrder',
+    // );
   }
 
-  getList(): Array<List> {
-    return new Helpers().sortByKey(this.list, 'id');
-  }
-
-  addList(newItem: List): Array<List> {
-    if (this.list.find((l) => l.id == newItem.id)) {
-      let error: string = `Item with id: ${newItem.id} already exists`;
+  async addList(newListDto: List): Promise<List> {
+    let existingList = await this.listModel.findOne({sortOrder: newListDto.sortOrder}).exec();
+    if(existingList) {
+      let error: string = `Item with sortOrder: ${existingList.sortOrder} already exists`;
       throw new HttpException(
         {
           status: HttpStatus.CONFLICT,
@@ -37,14 +36,23 @@ export class ListService {
       );
     }
 
-    this.list.push(newItem);
-    writeFileSync(this.listDataFileName, JSON.stringify(this.list));
-    return new Helpers().sortByKey(this.list, 'id');
+    newListDto.dateTimeCreated = newListDto.dateTimeCreated || new Date();
+
+    const newList = new this.listModel(newListDto);
+    return await newList.save();
   }
 
-  updateList(updateId: number, updateItem: UpdateListDto): Array<List> {
-    if (!this.list.find((l) => l.id == updateId)) {
-      let error: string = `Item with id: ${updateId} does not exist`;
+  async updateList(updateSortOrder: number, updateItem: UpdateListDto): Promise<List> {
+
+    if(updateItem.status.toLowerCase() == 'done') {
+      updateItem.dateTimeCompleted = updateItem.dateTimeCompleted || new Date();
+    } else {
+      delete updateItem.dateTimeCompleted;
+    }
+
+    let listToUpdate = await this.listModel.findOneAndUpdate({sortOrder: updateSortOrder}, updateItem, {new: true}).exec();
+    if(!listToUpdate) {
+      let error: string = `Item with sortOrder: ${updateSortOrder} does not exist`;
       throw new HttpException(
         {
           status: HttpStatus.NOT_FOUND,
@@ -56,40 +64,29 @@ export class ListService {
         },
       );
     }
+    return listToUpdate;
+  }
 
-    this.list.map((l) => {
-      if (l.id == updateId) {
-        l.title = updateItem.title || l.details;
-        l.details = updateItem.details || l.details;
+  async getList(): Promise<List[]> {
+    const listData = await this.listModel.find().sort({"sortOrder": 1}).exec();
+    return listData;
+  }
+
+  async deleteList(sortOrder: number): Promise<List> {
+      const deletedList = await this.listModel.findOneAndDelete({sortOrder: sortOrder}, {new: true}).exec();
+      if (!deletedList) {
+        let error: string = `Item with sortOrder: ${sortOrder} does not exist`;
+        throw new HttpException(
+          {
+            status: HttpStatus.NOT_FOUND,
+            error: error,
+          },
+          HttpStatus.NOT_FOUND,
+          {
+            cause: error,
+          },
+        );
       }
-      return l;
-    });
-
-    writeFileSync(this.listDataFileName, JSON.stringify(this.list));
-    return this.list;
-  }
-
-  deleteList(id: number): Array<List> {
-    const indexOfItemToBeDeleted: number = this.list.findIndex(
-      (l) => l.id == id,
-    );
-
-    if(indexOfItemToBeDeleted < 1) {
-      let error: string = `Item with id: ${id} does not exist`;
-      throw new HttpException(
-        {
-          status: HttpStatus.NOT_FOUND,
-          error: error,
-        },
-        HttpStatus.NOT_FOUND,
-        {
-          cause: error,
-        },
-      );
-    }
-
-    this.list.splice(indexOfItemToBeDeleted, 1);
-    writeFileSync(this.listDataFileName, JSON.stringify(this.list));
-    return this.list;
+      return deletedList;
   }
 }
